@@ -8,9 +8,12 @@ const checkRoute = require('./routes/checkRoute');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 app.use(bodyParser.json());
-
 app.use('/api', checkRoute);
 
 app.get('/', (req, res) => {
@@ -18,7 +21,7 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/plagiarism-checker';
 
 mongoose.connect(MONGO_URI)
   .then(() => {
@@ -28,5 +31,5 @@ mongoose.connect(MONGO_URI)
     });
   })
   .catch((err) => {
-    console.log('MongoDB Error:', err);
+    console.log('MongoDB Error:', err.message);
   });
