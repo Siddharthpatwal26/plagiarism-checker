@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "backend": "npm start --prefix backend",
+    "frontend": "npm start --prefix frontend",
+    "ml": "cd ml && python app.py",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\" \"npm run ml\""
   },
   "keywords": [],
   "author": "",
@@ -13,5 +17,8 @@
   "dependencies": {
     "axios": "^1.16.0",
     "react-router-dom": "^7.14.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

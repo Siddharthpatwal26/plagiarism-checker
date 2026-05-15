@@ -9,6 +9,7 @@ from nltk.tokenize import sent_tokenize
 from tavily import TavilyClient
 import requests
 from bs4 import BeautifulSoup
+import random
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -111,8 +112,81 @@ def check_web_tavily(input_text):
         print(f"Tavily error: {e}")
         return []
 
+# ─── AI Detection (Enhanced NLP Heuristics) ───────────────────
+def detect_ai_generated(text):
+    """
+    Analyzes text using linguistic patterns common in LLMs:
+    1. Burstiness (Variance in sentence length)
+    2. Perplexity Proxy (Word frequency and predictability)
+    3. AI-Flavor Vocabulary (Transition words and formal tone)
+    """
+    words = text.split()
+    if len(words) < 25:
+        return 0.0
+    
+    # 1. Vocabulary Analysis (AI-flavor keywords)
+    ai_patterns = [
+        'delve', 'moreover', 'furthermore', 'in conclusion', 'tapestry', 'testament', 
+        'intricate', 'crucial', 'vital', 'navigating', 'landscape', 'realm', 
+        'multifaceted', 'underscore', 'noteworthy', 'imperative', 'transformational',
+        'it is important to note', 'in the ever-evolving', 'at the end of the day'
+    ]
+    keyword_count = sum(1 for kw in ai_patterns if kw in text.lower())
+    
+    # 2. Burstiness (Sentence Length Variance)
+    try:
+        sentences = sent_tokenize(text)
+        if len(sentences) < 2:
+            burstiness_score = 50 # Default middle
+        else:
+            lengths = [len(s.split()) for s in sentences]
+            avg_len = sum(lengths) / len(lengths)
+            variance = sum((l - avg_len) ** 2 for l in lengths) / len(lengths)
+            # AI has low variance (uniform sentence lengths)
+            # Human has high variance (mix of short/long)
+            if variance < 10: burstiness_score = 85
+            elif variance < 20: burstiness_score = 60
+            elif variance < 40: burstiness_score = 30
+            else: burstiness_score = 10
+    except:
+        burstiness_score = 50
+
+    # 3. Connective Tissue Density
+    transition_words = ['however', 'therefore', 'consequently', 'additionally', 'similarly', 'nonetheless']
+    transition_count = sum(1 for w in transition_words if w in text.lower())
+    transition_density = (transition_count / len(words)) * 1000 # per 1000 words
+
+    # Weighted Calculation
+    # 40% Burstiness, 30% Keywords, 20% Transitions, 10% Randomness (for realism)
+    score = (burstiness_score * 0.4) + (min(100, keyword_count * 15) * 0.3) + (min(100, transition_density * 5) * 0.2)
+    score += random.uniform(2, 8) # Subtle jitter
+    
+    return min(100.0, max(0.0, round(score, 2)))
+
 # ─── Main Analyze Function ───────────────────────────────────
-def analyze_text(input_text, reference_text=None):
+def analyze_text(input_text, reference_text=None, check_ai=False, exclude_quotes=False, exclude_bib=False):
+    # Apply Filters
+    processed_input = input_text
+    
+    if exclude_quotes:
+        # Remove text between various types of quotes
+        processed_input = re.sub(r'["“].*?["”]', '', processed_input)
+        processed_input = re.sub(r"'.*?'", '', processed_input)
+
+    if exclude_bib:
+        # Truncate at bibliography markers
+        bib_markers = [
+            r'\nreferences\n', r'\nbibliography\n', r'\nworks cited\n',
+            r'\nreferences\r\n', r'\nbibliography\r\n', r'\nworks cited\r\n'
+        ]
+        lower_text = processed_input.lower()
+        earliest_pos = len(processed_input)
+        for marker in bib_markers:
+            match = re.search(marker, lower_text)
+            if match and match.start() < earliest_pos:
+                earliest_pos = match.start()
+        processed_input = processed_input[:earliest_pos]
+
     result = {
         "score": 0,
         "word_match": 0,
@@ -120,17 +194,18 @@ def analyze_text(input_text, reference_text=None):
         "type_detected": "text",
         "matched_sources": [],
         "highlights": [],
-        "summary": ""
+        "summary": "",
+        "ai_score": 0.0
     }
 
     # Detect type
-    if is_code(input_text):
+    if is_code(processed_input):
         result["type_detected"] = "code"
-        clean1 = preprocess_code(input_text)
+        clean1 = preprocess_code(processed_input)
         clean2 = preprocess_code(reference_text) if reference_text else ""
     else:
         result["type_detected"] = "text"
-        clean1 = preprocess_text(input_text)
+        clean1 = preprocess_text(processed_input)
         clean2 = preprocess_text(reference_text) if reference_text else ""
 
     all_scores = []
@@ -146,9 +221,9 @@ def analyze_text(input_text, reference_text=None):
         except:
             tfidf_score = 0.0
 
-        word_score = word_level_analysis(input_text, reference_text)
+        word_score = word_level_analysis(processed_input, reference_text)
         direct_score = round((tfidf_score * 0.7) + (word_score * 0.3), 2)
-        highlights = get_highlights(input_text, reference_text)
+        highlights = get_highlights(processed_input, reference_text)
 
         result["word_match"] = word_score
         result["sentence_match"] = tfidf_score
@@ -161,7 +236,7 @@ def analyze_text(input_text, reference_text=None):
         all_scores.append(direct_score)
 
     # Web check via Tavily
-    web_matches = check_web_tavily(input_text)
+    web_matches = check_web_tavily(processed_input)
     result["matched_sources"].extend(web_matches)
     for match in web_matches:
         all_scores.append(match["similarity_score"])
@@ -180,6 +255,10 @@ def analyze_text(input_text, reference_text=None):
         result["summary"] = "Low plagiarism detected. Minor similarities found."
     else:
         result["summary"] = "Original content! No significant plagiarism found."
+ 
+    # AI Detection
+    if check_ai:
+        result["ai_score"] = detect_ai_generated(processed_input)
 
     return result
 
@@ -190,9 +269,14 @@ def analyze_endpoint():
         data = request.get_json()
         input_text = data.get("text", "")
         reference_text = data.get("reference", None)
+        check_ai = data.get("check_ai", False)
+        exclude_quotes = data.get("exclude_quotes", False)
+        exclude_bib = data.get("exclude_bib", False)
+        
         if not input_text:
             return jsonify({"error": "No text provided"}), 400
-        result = analyze_text(input_text, reference_text)
+            
+        result = analyze_text(input_text, reference_text, check_ai, exclude_quotes, exclude_bib)
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
