@@ -1,0 +1,16 @@
+.theme-dark {
+  background: #060b18;
+  color: white;
+  min-height: 100vh;
+}
+
+.theme-light {
+  background: #f0f2f7;
+  color: #111;
+  min-height: 100vh;
+}
+
+.theme-light body {
+  background: #f0f2f7;
+  color: #111;
+}
