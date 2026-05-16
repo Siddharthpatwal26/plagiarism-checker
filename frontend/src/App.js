@@ -2,11 +2,14 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Results from './pages/Results';
 import History from './pages/History';
 import Upload from './pages/Upload';
+import Login from './pages/Login';
+import AuthSuccess from './pages/AuthSuccess';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -18,6 +21,8 @@ function AnimatedRoutes() {
         <Route path="/results" element={<Results />} />
         <Route path="/history" element={<History />} />
         <Route path="/upload" element={<Upload />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/auth/success" element={<AuthSuccess />} />
       </Routes>
     </AnimatePresence>
   );
@@ -25,7 +30,7 @@ function AnimatedRoutes() {
 
 function App() {
   return (
-    <>
+    <AuthProvider>
       <Toaster position="bottom-right" toastOptions={{
         className: 'glass-panel',
         style: {
@@ -43,7 +48,7 @@ function App() {
         <Navbar />
         <AnimatedRoutes />
       </Router>
-    </>
+    </AuthProvider>
   );
 }
 

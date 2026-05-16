@@ -5,7 +5,7 @@ import { checkPlagiarism } from '../services/api';
 import Console from '../components/Console';
 import { useTheme } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
-import { FiFileText, FiCode, FiSearch, FiRefreshCw } from 'react-icons/fi';
+import { FiFileText, FiCode, FiSearch, FiRefreshCw, FiMic, FiMicOff, FiSettings } from 'react-icons/fi';
 
 function Home() {
   const navigate = useNavigate();
@@ -19,6 +19,58 @@ function Home() {
   const [textFocused, setTextFocused] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [mode, setMode] = useState('text');
+  const [isListening, setIsListening] = useState({ type: null, active: false });
+  
+  // Scan Settings State
+  const [settings, setSettings] = useState({
+    aiDetection: true,
+    excludeQuotes: false,
+    excludeBibliography: false,
+  });
+
+  const handleSettingChange = (setting) => {
+    setSettings(prev => ({ ...prev, [setting]: !prev[setting] }));
+    addLog('info', `[SETTINGS] ${setting} → ${!settings[setting] ? 'ON' : 'OFF'}`);
+  };
+
+  const startListening = (target) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('Voice typing is not supported in your browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening({ type: target, active: true });
+      toast.success('Listening... Start speaking!');
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      if (target === 'text') {
+        setText(prev => prev + (prev.length > 0 ? ' ' : '') + transcript);
+      } else {
+        setReference(prev => prev + (prev.length > 0 ? ' ' : '') + transcript);
+      }
+      setIsListening({ type: null, active: false });
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening({ type: null, active: false });
+      toast.error('Voice typing error: ' + event.error);
+    };
+
+    recognition.onend = () => {
+      setIsListening({ type: null, active: false });
+    };
+
+    recognition.start();
+  };
 
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
@@ -91,7 +143,13 @@ function Home() {
     addLog('info', '[DB] Checking MongoDB database...');
 
     try {
-      const result = await checkPlagiarism(text, reference);
+      const result = await checkPlagiarism(
+        text, 
+        reference, 
+        settings.aiDetection, 
+        settings.excludeQuotes, 
+        settings.excludeBibliography
+      );
 
       setProgress(100);
       setProgressLabel('Analysis complete! ✓');
@@ -119,6 +177,7 @@ function Home() {
             summary: result.summary,
             matched_sources: result.matched_sources,
             highlights: result.highlights,
+            ai_score: result.ai_score,
           }
         });
       }, 600);
@@ -185,7 +244,7 @@ function Home() {
       </div>
 
       {/* MAIN GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem' }}>
 
         {/* CHECKER CARD */}
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
@@ -193,6 +252,17 @@ function Home() {
             <div style={{ fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {mode === 'code' ? <FiCode className="icon-glow" /> : <FiFileText className="icon-glow" />}
               {loading ? progressLabel || 'Analyzing...' : mode === 'code' ? 'Code Checker' : 'Text Checker'}
+              {!loading && (
+                <motion.button
+                  animate={isListening.active && isListening.type === 'text' ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                  onClick={() => startListening('text')}
+                  style={{ background: 'transparent', border: 'none', color: isListening.active && isListening.type === 'text' ? '#f43f5e' : 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', marginLeft: '10px' }}
+                  title="Voice Typing"
+                >
+                  {isListening.active && isListening.type === 'text' ? <FiMicOff /> : <FiMic />}
+                </motion.button>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-glass)', padding: '4px', borderRadius: '12px' }}>
               <button 
@@ -257,13 +327,26 @@ function Home() {
               <div style={{ height: '100%', width: `${wordProgressWidth}%`, background: wordProgressColor, transition: 'width 0.3s ease' }} />
             </div>
 
-            <textarea
-              style={{ width: '100%', padding: '1rem', fontSize: '0.875rem', border: `1px solid var(--border-color)`, borderRadius: '12px', background: 'var(--bg-glass)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical', opacity: loading ? 0.5 : 1, minHeight: '80px' }}
-              placeholder="Reference text (Optional) - Leave empty to auto-search via Tavily AI..."
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              disabled={loading}
-            />
+            <div style={{ position: 'relative' }}>
+              <textarea
+                style={{ width: '100%', padding: '1rem', fontSize: '0.875rem', border: `1px solid var(--border-color)`, borderRadius: '12px', background: 'var(--bg-glass)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical', opacity: loading ? 0.5 : 1, minHeight: '80px', paddingRight: '40px' }}
+                placeholder="Reference text (Optional) - Leave empty to auto-search via Tavily AI..."
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                disabled={loading}
+              />
+              {!loading && (
+                <motion.button
+                  animate={isListening.active && isListening.type === 'reference' ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                  onClick={() => startListening('reference')}
+                  style={{ position: 'absolute', right: '12px', top: '12px', background: 'transparent', border: 'none', color: isListening.active && isListening.type === 'reference' ? '#f43f5e' : 'var(--text-secondary)', cursor: 'pointer', zIndex: 10 }}
+                  title="Voice Typing"
+                >
+                  {isListening.active && isListening.type === 'reference' ? <FiMicOff /> : <FiMic />}
+                </motion.button>
+              )}
+            </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <motion.button
@@ -297,14 +380,55 @@ function Home() {
 
         {/* RIGHT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <motion.div whileHover={{ scale: 1.05 }} className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--accent-primary)' }}>{todayCount}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '8px', fontWeight: 600 }}>Today</div>
+          
+          {/* SCAN SETTINGS */}
+          <div className="glass-panel" style={{ overflow: 'hidden' }}>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FiSettings style={{ color: 'var(--accent-primary)' }} /> 
+              <span style={{ fontWeight: '700', fontSize: '1rem' }}>Scan Settings</span>
+            </div>
+            
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>General Rules</div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Exclude Quotes</span>
+                  <div className={`toggle-switch ${settings.excludeQuotes ? 'on' : ''}`} onClick={() => handleSettingChange('excludeQuotes')}>
+                    <div className="knob" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Exclude Bibliography</span>
+                  <div className={`toggle-switch ${settings.excludeBibliography ? 'on' : ''}`} onClick={() => handleSettingChange('excludeBibliography')}>
+                    <div className="knob" />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--border-color)' }} />
+
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>AI & Integrity</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>AI Detection</span>
+                  <div className={`toggle-switch ${settings.aiDetection ? 'on' : ''}`} onClick={() => handleSettingChange('aiDetection')}>
+                    <div className="knob" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <motion.div whileHover={{ scale: 1.05 }} className="glass-panel" style={{ padding: '1.25rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--accent-primary)' }}>{todayCount}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', fontWeight: 600 }}>Today</div>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--accent-secondary)' }}>98%</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '8px', fontWeight: 600 }}>Accuracy</div>
+            <motion.div whileHover={{ scale: 1.05 }} className="glass-panel" style={{ padding: '1.25rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--accent-secondary)' }}>98%</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', fontWeight: 600 }}>Accuracy</div>
             </motion.div>
           </div>
           <Console logs={logs} />

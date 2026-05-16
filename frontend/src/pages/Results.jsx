@@ -18,6 +18,53 @@ function Results() {
 
   const stateData = location.state || JSON.parse(localStorage.getItem('latestResult') || 'null');
 
+  useEffect(() => {
+    if (stateData) {
+      const { score } = stateData;
+      
+      // Dynamic Theme Overrides based on Score
+      const root = document.documentElement;
+      
+      let themeColor = '#3b82f6'; // Default Blue
+      let glowColor = 'rgba(59, 130, 246, 0.2)';
+      
+      if (score > 50) {
+        themeColor = '#f43f5e'; // Red
+        glowColor = 'rgba(244, 63, 94, 0.2)';
+      } else if (score > 20) {
+        themeColor = '#fbbf24'; // Amber
+        glowColor = 'rgba(251, 191, 36, 0.2)';
+      } else {
+        themeColor = '#10b981'; // Emerald
+        glowColor = 'rgba(16, 185, 129, 0.2)';
+      }
+
+      root.style.setProperty('--accent-primary', themeColor);
+      root.style.setProperty('--glow-color', glowColor);
+
+      // Sound alerts
+      let audioUrl = '';
+      if (score > 50) {
+        audioUrl = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3';
+      } else if (score > 20) {
+        audioUrl = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
+      }
+
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.volume = 0.3;
+        audio.play().catch(e => console.log("Audio blocked:", e));
+      }
+
+      // Cleanup: Revert theme on unmount
+      return () => {
+        root.style.removeProperty('--accent-primary');
+        root.style.removeProperty('--glow-color');
+        root.style.removeProperty('--accent-secondary');
+      };
+    }
+  }, [stateData]);
+
   const downloadPDF = () => {
     setDownloading(true);
     try {
@@ -231,7 +278,16 @@ function Results() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
-        <div className="glass-panel" style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+        <motion.div 
+          animate={score > 50 ? { 
+            boxShadow: ["0 0 0px rgba(244, 63, 94, 0)", "0 0 20px rgba(244, 63, 94, 0.4)", "0 0 0px rgba(244, 63, 94, 0)"] 
+          } : score > 20 ? {
+            boxShadow: ["0 0 0px rgba(251, 191, 36, 0)", "0 0 20px rgba(251, 191, 36, 0.4)", "0 0 0px rgba(251, 191, 36, 0)"]
+          } : {}}
+          transition={{ repeat: Infinity, duration: 1.5 }}
+          className="glass-panel" 
+          style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+        >
           <div style={{ position: 'relative', width: '180px', height: '180px', marginBottom: '1.5rem' }}>
             <Doughnut data={chartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } }} />
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
@@ -241,7 +297,7 @@ function Results() {
           </div>
           <div style={{ fontSize: '1.25rem', fontWeight: '800', color: col, marginBottom: '8px' }}>{getVerdict(score)}</div>
           <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{summary}</div>
-        </div>
+        </motion.div>
 
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
           <div style={{ padding: '1rem 1.5rem', borderBottom: `1px solid var(--border-color)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

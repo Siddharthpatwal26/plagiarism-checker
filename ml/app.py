@@ -119,6 +119,7 @@ def detect_ai_generated(text):
     1. Burstiness (Variance in sentence length)
     2. Perplexity Proxy (Word frequency and predictability)
     3. AI-Flavor Vocabulary (Transition words and formal tone)
+    4. Sentence Length Uniformity
     """
     words = text.split()
     if len(words) < 25:
@@ -129,42 +130,58 @@ def detect_ai_generated(text):
         'delve', 'moreover', 'furthermore', 'in conclusion', 'tapestry', 'testament', 
         'intricate', 'crucial', 'vital', 'navigating', 'landscape', 'realm', 
         'multifaceted', 'underscore', 'noteworthy', 'imperative', 'transformational',
-        'it is important to note', 'in the ever-evolving', 'at the end of the day'
+        'it is important to note', 'in the ever-evolving', 'at the end of the day',
+        'comprehensive', 'synergy', 'leverage', 'bespoke', 'holistic'
     ]
     keyword_count = sum(1 for kw in ai_patterns if kw in text.lower())
     
-    # 2. Burstiness (Sentence Length Variance)
+    # 2. Burstiness (Sentence Length Variance) & Uniformity
     try:
         sentences = sent_tokenize(text)
         if len(sentences) < 2:
-            burstiness_score = 50 # Default middle
+            burstiness_score = 50 
         else:
             lengths = [len(s.split()) for s in sentences]
             avg_len = sum(lengths) / len(lengths)
             variance = sum((l - avg_len) ** 2 for l in lengths) / len(lengths)
+            
             # AI has low variance (uniform sentence lengths)
-            # Human has high variance (mix of short/long)
-            if variance < 10: burstiness_score = 85
-            elif variance < 20: burstiness_score = 60
-            elif variance < 40: burstiness_score = 30
-            else: burstiness_score = 10
+            if variance < 10: burstiness_score = 90
+            elif variance < 20: burstiness_score = 70
+            elif variance < 40: burstiness_score = 40
+            else: burstiness_score = 15
+            
+            # 2b. Average sentence length (AI often uses 15-25 words)
+            if 15 <= avg_len <= 25:
+                burstiness_score += 10
     except:
         burstiness_score = 50
 
     # 3. Connective Tissue Density
-    transition_words = ['however', 'therefore', 'consequently', 'additionally', 'similarly', 'nonetheless']
+    transition_words = ['however', 'therefore', 'consequently', 'additionally', 'similarly', 'nonetheless', 'despite']
     transition_count = sum(1 for w in transition_words if w in text.lower())
     transition_density = (transition_count / len(words)) * 1000 # per 1000 words
 
+    # 4. Perplexity Proxy (Lexical Diversity)
+    unique_words = set(preprocess_text(text).split())
+    lexical_diversity = (len(unique_words) / len(words)) if len(words) > 0 else 0
+    # AI has slightly lower lexical diversity than high-quality human writing
+    perplexity_score = 100 - (lexical_diversity * 150) # Heuristic scaling
+    perplexity_score = max(0, min(100, perplexity_score))
+
     # Weighted Calculation
-    # 40% Burstiness, 30% Keywords, 20% Transitions, 10% Randomness (for realism)
-    score = (burstiness_score * 0.4) + (min(100, keyword_count * 15) * 0.3) + (min(100, transition_density * 5) * 0.2)
-    score += random.uniform(2, 8) # Subtle jitter
+    # 35% Burstiness, 25% Keywords, 15% Transitions, 20% Perplexity, 5% Jitter
+    score = (burstiness_score * 0.35) + \
+            (min(100, keyword_count * 15) * 0.25) + \
+            (min(100, transition_density * 6) * 0.15) + \
+            (perplexity_score * 0.20)
+    
+    score += random.uniform(0, 5) # Subtle jitter
     
     return min(100.0, max(0.0, round(score, 2)))
 
 # ─── Main Analyze Function ───────────────────────────────────
-def analyze_text(input_text, reference_text=None, check_ai=False, exclude_quotes=False, exclude_bib=False):
+def analyze_text(input_text, reference_text=None, check_ai=False, exclude_quotes=False, exclude_bib=False, check_web=True):
     # Apply Filters
     processed_input = input_text
     
@@ -236,10 +253,11 @@ def analyze_text(input_text, reference_text=None, check_ai=False, exclude_quotes
         all_scores.append(direct_score)
 
     # Web check via Tavily
-    web_matches = check_web_tavily(processed_input)
-    result["matched_sources"].extend(web_matches)
-    for match in web_matches:
-        all_scores.append(match["similarity_score"])
+    if check_web:
+        web_matches = check_web_tavily(processed_input)
+        result["matched_sources"].extend(web_matches)
+        for match in web_matches:
+            all_scores.append(match["similarity_score"])
 
     # Final score
     if all_scores:
@@ -273,10 +291,12 @@ def analyze_endpoint():
         exclude_quotes = data.get("exclude_quotes", False)
         exclude_bib = data.get("exclude_bib", False)
         
+        check_web = data.get("check_web", True)
+        
         if not input_text:
             return jsonify({"error": "No text provided"}), 400
             
-        result = analyze_text(input_text, reference_text, check_ai, exclude_quotes, exclude_bib)
+        result = analyze_text(input_text, reference_text, check_ai, exclude_quotes, exclude_bib, check_web)
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

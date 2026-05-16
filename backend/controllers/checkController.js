@@ -3,7 +3,7 @@ const axios = require('axios');
 
 const checkPlagiarism = async (req, res) => {
   try {
-    const { text, reference, checkAI, excludeQuotes, excludeBibliography } = req.body;
+    const { text, reference, checkAI, excludeQuotes, excludeBibliography, checkWeb } = req.body;
 
     if (!text) {
       return res.status(400).json({ message: 'Text is required!' });
@@ -13,7 +13,7 @@ const checkPlagiarism = async (req, res) => {
     const mlResponse = await axios.post('http://127.0.0.1:5001/analyze', {
       text: text,
       reference: reference || null,
-      check_web: false,
+      check_web: checkWeb !== undefined ? checkWeb : true,
       check_ai: checkAI || false,
       exclude_quotes: excludeQuotes || false,
       exclude_bib: excludeBibliography || false

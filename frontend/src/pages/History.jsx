@@ -149,8 +149,19 @@ function History() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
                   <div style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: '800', color: col }}>{item.score}%</div>
-                  <div style={{ background: 'var(--bg-glass)', color: col, padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '700' }}>
-                    {getVerdict(item.score)}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ background: 'var(--bg-glass)', color: col, padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '700' }}>
+                      {getVerdict(item.score)}
+                    </div>
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }} 
+                      whileTap={{ scale: 0.95 }} 
+                      className="glass-button" 
+                      style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '600', height: '24px', display: 'flex', alignItems: 'center' }}
+                      onClick={() => navigate('/results', { state: item })}
+                    >
+                      View
+                    </motion.button>
                   </div>
                 </div>
               </motion.div>

@@ -6,7 +6,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 import ProgressBar from '../components/ProgressBar';
 import toast from 'react-hot-toast';
-import { FiUploadCloud, FiSearch, FiFileText, FiSettings, FiCheckCircle, FiTrash2, FiEdit3, FiZap } from 'react-icons/fi';
+import { FiUploadCloud, FiSearch, FiFileText, FiSettings, FiCheckCircle, FiTrash2, FiEdit3, FiZap, FiMic, FiMicOff } from 'react-icons/fi';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -20,6 +20,42 @@ function Upload() {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('Voice typing is not supported in your browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false; // Set to false to auto-stop on silence
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.success('Listening... Start speaking!');
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setText(prev => prev + (prev.length > 0 ? ' ' : '') + transcript);
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      toast.error('Voice typing error: ' + event.error);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
   
   // Settings State
   const [activeTab, setActiveTab] = useState('plagiarism'); // 'plagiarism', 'ai_detector'
@@ -229,8 +265,29 @@ function Upload() {
         <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '500px' }}>
           {/* Editor Header */}
           <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.1)' }}>
-             <div style={{ display: 'flex', gap: '15px' }}>
+             <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}><FiEdit3 /> Text Editor</span>
+                <motion.button 
+                  animate={isListening ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                  onClick={startListening}
+                  style={{ 
+                    background: isListening ? 'rgba(244, 63, 94, 0.15)' : 'transparent',
+                    border: 'none',
+                    color: isListening ? '#f43f5e' : 'var(--accent-primary)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    transition: 'all 0.3s'
+                  }}
+                >
+                  {isListening ? <><FiMicOff /> Stop Mic</> : <><FiMic /> Voice Typing</>}
+                </motion.button>
              </div>
              {text && (
                 <button onClick={clearAll} style={{ background: 'transparent', border: 'none', color: '#f43f5e', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
