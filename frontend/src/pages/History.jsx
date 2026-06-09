@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FiClock, FiTrash2, FiPlus } from 'react-icons/fi';
 
-function History() {
+function History({ dark }) {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const h = JSON.parse(localStorage.getItem('plagiarism_history') || '[]');
     setHistory(h);
+    setTimeout(() => setMounted(true), 100);
   }, []);
 
   const clearHistory = () => {
-    localStorage.removeItem('plagiarism_history');
-    setHistory([]);
+    if (window.confirm('Saari history delete karni hai?')) {
+      localStorage.removeItem('plagiarism_history');
+      setHistory([]);
+    }
+  };
+
+  const deleteOne = (id) => {
+    const updated = history.filter(h => h.id !== id);
+    localStorage.setItem('plagiarism_history', JSON.stringify(updated));
+    setHistory(updated);
   };
 
   const getColor = (score) => {
@@ -25,9 +33,15 @@ function History() {
   };
 
   const getVerdict = (score) => {
-    if (score <= 20) return 'Original';
-    if (score <= 50) return 'Medium';
-    return 'High Risk';
+    if (score <= 20) return { label: 'Original', emoji: '✅' };
+    if (score <= 50) return { label: 'Medium', emoji: '⚠️' };
+    return { label: 'High Risk', emoji: '🚨' };
+  };
+
+  const getBg = (score) => {
+    if (score <= 20) return 'rgba(52,211,153,0.08)';
+    if (score <= 50) return 'rgba(251,191,36,0.08)';
+    return 'rgba(244,63,94,0.08)';
   };
 
   const filteredHistory = history.filter(h => {
@@ -37,139 +51,180 @@ function History() {
     return true;
   });
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
+  // ── Theme ──
+  const bg         = dark ? '#060b18' : '#f0f2f7';
+  const cardBg     = dark ? 'rgba(255,255,255,0.03)' : '#ffffff';
+  const cardBorder = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+  const cardHover  = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.15)';
+  const textPrimary= dark ? '#ffffff' : '#111111';
+  const textMuted  = dark ? 'rgba(255,255,255,0.35)' : '#888';
+  const sepColor   = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-  };
+  const stats = [
+    { label: 'Total Checks', value: history.length,                                          color: textPrimary, sub: 'All time',     icon: '📊' },
+    { label: 'High Risk',    value: history.filter(h => h.score > 50).length,                color: '#f43f5e',   sub: 'Score > 50%', icon: '🚨' },
+    { label: 'Medium Risk',  value: history.filter(h => h.score > 20 && h.score <= 50).length, color: '#fbbf24', sub: '20–50%',      icon: '⚠️' },
+    { label: 'Original',     value: history.filter(h => h.score <= 20).length,               color: '#34d399',   sub: 'Score < 20%', icon: '✅' },
+  ];
+
+  const filters = [
+    { key: 'all',      label: '🔍 All' },
+    { key: 'original', label: '✅ Original' },
+    { key: 'medium',   label: '⚠️ Medium' },
+    { key: 'high',     label: '🚨 High Risk' },
+  ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-      style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    <div style={{ background: bg, minHeight: 'calc(100vh - 54px)', padding: '20px', transition: 'all 0.3s', opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(8px)' }}>
+
+      {/* ── HEADER ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
         <div>
-          <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '8px' }}>Check History</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>All your previous plagiarism checks</p>
+          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: '22px', fontWeight: '800', color: textPrimary, margin: '0 0 4px' }}>Check History</h2>
+          <p style={{ fontSize: '12px', color: textMuted, margin: 0, fontFamily: 'monospace' }}>All your previous plagiarism checks</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-color)', color: 'var(--accent-primary)', padding: '6px 14px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: '700' }}>{history.length} total checks</span>
+        <div style={{ display: 'flex', gap: '8px' }}>
           {history.length > 0 && (
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-glow" style={{ padding: '8px 16px', background: 'rgba(244,63,94,0.15)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.3)', borderRadius: '10px', fontSize: '0.875rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={clearHistory}>
-              <FiTrash2 className="icon-glow" /> Clear All
-            </motion.button>
-          )}
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-glow" style={{ padding: '8px 16px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '0.875rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => navigate('/')}>
-            <FiPlus className="icon-glow" /> New Check
-          </motion.button>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 600 }}>Total Checks</div>
-          <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px' }}>{history.length}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>All time</div>
-        </div>
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 600 }}>High Risk</div>
-          <div style={{ fontSize: '2rem', fontWeight: '800', color: '#f43f5e', marginBottom: '4px' }}>{history.filter(h => h.score > 50).length}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Score &gt; 50%</div>
-        </div>
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 600 }}>Medium Risk</div>
-          <div style={{ fontSize: '2rem', fontWeight: '800', color: '#fbbf24', marginBottom: '4px' }}>{history.filter(h => h.score > 20 && h.score <= 50).length}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Score 20-50%</div>
-        </div>
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 600 }}>Original</div>
-          <div style={{ fontSize: '2rem', fontWeight: '800', color: '#34d399', marginBottom: '4px' }}>{history.filter(h => h.score <= 20).length}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Score &lt; 20%</div>
-        </div>
-      </div>
-
-      {history.length > 0 && (
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '2rem' }}>
-          {['all', 'original', 'medium', 'high'].map(f => (
-            <button
-              key={f}
-              className={filter === f ? "btn-glow" : ""}
-              style={{ padding: '8px 16px', background: filter === f ? 'var(--accent-primary)' : 'var(--bg-glass)', color: filter === f ? '#fff' : 'var(--text-secondary)', border: `1px solid ${filter === f ? 'transparent' : 'var(--border-color)'}`, borderRadius: '10px', fontSize: '0.875rem', fontWeight: filter === f ? '700' : '600', transition: 'all 0.2s' }}
-              onClick={() => setFilter(f)}
+            <button onClick={clearHistory} style={{ padding: '8px 14px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '0.5px solid rgba(244,63,94,0.3)', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.1)'; }}
             >
-              {f === 'all' ? '🔍 All' : f === 'original' ? '✅ Original' : f === 'medium' ? '⚠️ Medium' : '🚨 High Risk'}
+              🗑 Clear All
+            </button>
+          )}
+          <button onClick={() => navigate('/')} style={{ padding: '8px 14px', background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'Syne, sans-serif', transition: 'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(124,58,237,0.4)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            + New Check
+          </button>
+        </div>
+      </div>
+
+      {/* ── STATS ROW ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '16px' }}>
+        {stats.map((s, i) => (
+          <div key={i} style={{ background: cardBg, border: `0.5px solid ${cardBorder}`, borderRadius: '12px', padding: '14px 16px', position: 'relative', overflow: 'hidden', transition: 'all 0.2s', opacity: mounted ? 1 : 0, transitionDelay: `${i * 60}ms` }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = cardHover; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = cardBorder; e.currentTarget.style.transform = 'translateY(0)'; }}
+          >
+            <div style={{ fontSize: '10px', color: textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}>{s.icon} {s.label}</div>
+            <div style={{ fontFamily: 'monospace', fontSize: '26px', fontWeight: '800', color: s.color, marginBottom: '2px' }}>{s.value}</div>
+            <div style={{ fontSize: '10px', color: textMuted }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── FILTERS ── */}
+      {history.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+          {filters.map(f => (
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              style={{ padding: '6px 14px', background: filter === f.key ? 'linear-gradient(135deg,#1d4ed8,#7c3aed)' : cardBg, color: filter === f.key ? '#fff' : textMuted, border: `0.5px solid ${filter === f.key ? 'transparent' : cardBorder}`, borderRadius: '8px', fontSize: '11px', fontWeight: filter === f.key ? '700' : '500', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'Syne, sans-serif' }}
+              onMouseEnter={e => { if (filter !== f.key) { e.currentTarget.style.borderColor = cardHover; e.currentTarget.style.color = textPrimary; }}}
+              onMouseLeave={e => { if (filter !== f.key) { e.currentTarget.style.borderColor = cardBorder; e.currentTarget.style.color = textMuted; }}}
+            >
+              {f.label}
             </button>
           ))}
+          <span style={{ marginLeft: 'auto', fontSize: '11px', color: textMuted, fontFamily: 'monospace', display: 'flex', alignItems: 'center' }}>
+            {filteredHistory.length} result{filteredHistory.length !== 1 ? 's' : ''}
+          </span>
         </div>
       )}
 
+      {/* ── EMPTY STATE ── */}
       {filteredHistory.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📋</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '8px' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', background: cardBg, border: `0.5px solid ${cardBorder}`, borderRadius: '16px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '12px' }}>📋</div>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontSize: '18px', fontWeight: '800', color: textPrimary, marginBottom: '8px' }}>
             {history.length === 0 ? 'No checks yet!' : 'No results for this filter!'}
           </div>
-          <div style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+          <div style={{ fontSize: '12px', color: textMuted, marginBottom: '20px' }}>
             {history.length === 0 ? 'Run your first plagiarism check to see history here.' : 'Try a different filter.'}
           </div>
+          {history.length === 0 && (
+            <button onClick={() => navigate('/')} style={{ padding: '10px 20px', background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
+              + Start First Check
+            </button>
+          )}
         </div>
       ) : (
-        <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        /* ── HISTORY LIST ── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {filteredHistory.map((item, index) => {
             const col = getColor(item.score);
+            const verdict = getVerdict(item.score);
+            const itemBg = getBg(item.score);
+
             return (
-              <motion.div key={item.id} variants={itemVariants} className="glass-panel" whileHover={{ scale: 1.01 }} style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: `4px solid ${col}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: '700', color: col, flexShrink: 0 }}>
-                    #{index + 1}
+              <div key={item.id}
+                style={{ background: cardBg, border: `0.5px solid ${cardBorder}`, borderLeft: `3px solid ${col}`, borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', transition: 'all 0.2s', opacity: mounted ? 1 : 0, transitionDelay: `${index * 40}ms` }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = col; e.currentTarget.style.background = dark ? `${itemBg}` : '#fafafa'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = cardBorder; e.currentTarget.style.background = cardBg; e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.borderLeftColor = col; }}
+              >
+                {/* Index */}
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: itemBg, border: `0.5px solid ${col}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800', color: col, flexShrink: 0, fontFamily: 'monospace' }}>
+                  #{index + 1}
+                </div>
+
+                {/* Text + Meta */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', color: textPrimary, fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '5px' }}>
+                    {item.text}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '6px', fontWeight: 500 }}>{item.text}</div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}><FiClock /> {item.date}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>🌐 {item.sources} sources checked</span>
-                      {item.aiScore !== undefined && (
-                        <span style={{ fontSize: '0.75rem', color: '#a855f7', fontWeight: 600 }}>🤖 AI: {item.aiScore}%</span>
-                      )}
-                    </div>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '10px', color: textMuted, fontFamily: 'monospace' }}>
+                      🕐 {item.date ? new Date(item.date).toLocaleString() : 'N/A'}
+                    </span>
+                    <span style={{ fontSize: '10px', color: textMuted, fontFamily: 'monospace' }}>
+                      🌐 {item.sources || 0} sources
+                    </span>
+                    {item.aiScore !== undefined && (
+                      <span style={{ fontSize: '10px', color: '#a855f7', fontFamily: 'monospace', fontWeight: '600' }}>
+                        🤖 AI: {item.aiScore}%
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-                  <div style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: '800', color: col }}>{item.score}%</div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <div style={{ background: 'var(--bg-glass)', color: col, padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '700' }}>
-                      {getVerdict(item.score)}
-                    </div>
-                    <motion.button 
-                      whileHover={{ scale: 1.05 }} 
-                      whileTap={{ scale: 0.95 }} 
-                      className="glass-button" 
-                      style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '600', height: '24px', display: 'flex', alignItems: 'center' }}
-                      onClick={() => navigate('/results', { state: item })}
-                    >
-                      View
-                    </motion.button>
+
+                {/* Score + Verdict + Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                  {/* Score circle */}
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: '800', color: col, lineHeight: 1 }}>{item.score}%</div>
+                    <div style={{ fontSize: '9px', color: textMuted, marginTop: '2px' }}>score</div>
                   </div>
+
+                  {/* Verdict badge */}
+                  <div style={{ background: itemBg, color: col, border: `0.5px solid ${col}44`, padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                    {verdict.emoji} {verdict.label}
+                  </div>
+
+                  {/* View button */}
+                  <button onClick={() => navigate('/results', { state: item })}
+                    style={{ padding: '5px 12px', background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: textPrimary, border: `0.5px solid ${cardBorder}`, borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.15)'; e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = textPrimary; e.currentTarget.style.borderColor = cardBorder; }}
+                  >
+                    View →
+                  </button>
+
+                  {/* Delete button */}
+                  <button onClick={() => deleteOne(item.id)}
+                    style={{ padding: '5px 8px', background: 'transparent', color: textMuted, border: `0.5px solid ${cardBorder}`, borderRadius: '6px', fontSize: '11px', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.1)'; e.currentTarget.style.color = '#f43f5e'; e.currentTarget.style.borderColor = 'rgba(244,63,94,0.3)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = textMuted; e.currentTarget.style.borderColor = cardBorder; }}
+                  >
+                    🗑
+                  </button>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
-        </motion.div>
+        </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 

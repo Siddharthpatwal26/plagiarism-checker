@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const passport = require('passport');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // ✅ Passport Google config
@@ -14,6 +15,28 @@ const authRoute = require('./routes/authRoute');
 
 const app = express();
 
+// ✅ Rate Limiters
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { message: 'Bahut zyada requests! 15 minute baad try karo.' }
+});
+
+const checkLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { message: '1 minute mein sirf 10 checks allowed hain!' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { message: 'Bahut zyada login attempts! 15 minute baad try karo.' }
+});
+
+app.use(globalLimiter);
+
+// ✅ FIX: cors line add ki
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   methods: ['GET', 'POST'],
@@ -33,8 +56,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // ✅ Routes
-app.use('/api', checkRoute);
-app.use('/api/auth', authRoute);
+app.use('/api', checkLimiter, checkRoute);
+app.use('/api/auth', authLimiter, authRoute);
 
 app.get('/', (req, res) => {
   res.send('Plagiarism Checker Backend Running!');

@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { toast } from 'react-hot-toast';
 
 const AuthSuccess = () => {
   const navigate = useNavigate();
@@ -16,22 +15,52 @@ const AuthSuccess = () => {
     const id = params.get('id');
 
     if (token && name) {
+      // ✅ Pehle token set karo
       setGoogleAuth(token, { id, name, email });
-      toast.success(`Welcome, ${name}!`);
-      navigate('/');
+
+      // ✅ Thoda wait karo state update hone do — phir navigate karo
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 500);
     } else {
-      toast.error('Authentication failed');
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
-  }, [location, navigate, setGoogleAuth]);
+  }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="glass-panel p-8 text-center">
-        <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-        <h2 className="text-xl font-semibold">Authenticating...</h2>
-        <p className="text-text-secondary mt-2">Please wait while we complete your sign in.</p>
-      </div>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#060b18',
+      flexDirection: 'column',
+      gap: '16px'
+    }}>
+      {/* ✅ Loading spinner */}
+      <div style={{
+        width: '48px',
+        height: '48px',
+        border: '4px solid rgba(255,255,255,0.1)',
+        borderTop: '4px solid #60a5fa',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <p style={{
+        color: 'white',
+        fontSize: '16px',
+        fontWeight: '600',
+        fontFamily: 'Syne, sans-serif',
+      }}>Signing you in...</p>
+      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>
+        Please wait
+      </p>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

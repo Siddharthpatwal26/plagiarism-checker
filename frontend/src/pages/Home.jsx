@@ -244,7 +244,7 @@ function Home() {
       </div>
 
       {/* MAIN GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300 px', gap: '1.5rem' }}>
 
         {/* CHECKER CARD */}
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
@@ -382,26 +382,46 @@ function Home() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           {/* SCAN SETTINGS */}
-          <div className="glass-panel" style={{ overflow: 'hidden' }}>
+          <div className="glass-panel" style={{ overflow: 'visible' }}>
             <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <FiSettings style={{ color: 'var(--accent-primary)' }} /> 
               <span style={{ fontWeight: '700', fontSize: '1rem' }}>Scan Settings</span>
             </div>
             
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              {/* GENERAL RULES */}
               <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>General Rules</div>
+                <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
+                  General Rules
+                </div>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Exclude Quotes</span>
-                  <div className={`toggle-switch ${settings.excludeQuotes ? 'on' : ''}`} onClick={() => handleSettingChange('excludeQuotes')}>
+                {/* Exclude Quotes */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '500' }}>Exclude Quotes</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Skip quoted text</span>
+                  </div>
+                  <div 
+                    className={`toggle-switch ${settings.excludeQuotes ? 'on' : ''}`} 
+                    onClick={() => handleSettingChange('excludeQuotes')}
+                    style={{ flexShrink: 0 }}
+                  >
                     <div className="knob" />
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Exclude Bibliography</span>
-                  <div className={`toggle-switch ${settings.excludeBibliography ? 'on' : ''}`} onClick={() => handleSettingChange('excludeBibliography')}>
+                {/* Exclude Bibliography */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '500' }}>Exclude Bibliography</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Skip references</span>
+                  </div>
+                  <div 
+                    className={`toggle-switch ${settings.excludeBibliography ? 'on' : ''}`} 
+                    onClick={() => handleSettingChange('excludeBibliography')}
+                    style={{ flexShrink: 0 }}
+                  >
                     <div className="knob" />
                   </div>
                 </div>
@@ -409,15 +429,26 @@ function Home() {
 
               <div style={{ height: '1px', background: 'var(--border-color)' }} />
 
+              {/* AI & INTEGRITY */}
               <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>AI & Integrity</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>AI Detection</span>
-                  <div className={`toggle-switch ${settings.aiDetection ? 'on' : ''}`} onClick={() => handleSettingChange('aiDetection')}>
+                <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
+                  AI & Integrity
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '500' }}>AI Detection</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Detect AI content</span>
+                  </div>
+                  <div 
+                    className={`toggle-switch ${settings.aiDetection ? 'on' : ''}`} 
+                    onClick={() => handleSettingChange('aiDetection')}
+                    style={{ flexShrink: 0 }}
+                  >
                     <div className="knob" />
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
