@@ -88,7 +88,6 @@ def get_highlights(input_text, source_text, threshold=30):
             })
     return matches
 
-# ─── Web Search via Tavily ────────────────────────────────────
 def check_web_tavily(input_text):
     try:
         query = input_text[:200]
@@ -104,7 +103,8 @@ def check_web_tavily(input_text):
                     matched_sources.append({
                         "url": url,
                         "title": title,
-                        "similarity_score": score
+                        "similarity_score": score,
+                        "content": content  # ← add this line
                     })
         matched_sources.sort(key=lambda x: x["similarity_score"], reverse=True)
         return matched_sources
@@ -258,6 +258,11 @@ def analyze_text(input_text, reference_text=None, check_ai=False, exclude_quotes
         result["matched_sources"].extend(web_matches)
         for match in web_matches:
             all_scores.append(match["similarity_score"])
+            # Generate highlights from top web source
+            if match["similarity_score"] > 20 and not result["highlights"]:
+                web_content = match.get("content", "")
+                if web_content:
+                    result["highlights"] = get_highlights(processed_input, web_content)
 
     # Final score
     if all_scores:

@@ -363,7 +363,23 @@ function Results() {
         </div>
       </div>
 
-      {highlights && highlights.length > 0 && (
+      {stateData?.originalText && (
+        <div className="glass-panel" style={{ overflow: 'hidden', marginTop: '1.5rem' }}>
+          <div style={{ padding: '1rem 1.5rem', borderBottom: `1px solid var(--border-color)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FiAlertTriangle style={{ color: '#fbbf24' }} /> Highlighted Plagiarized Text
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {highlights?.length || 0} flagged sentences
+            </span>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            <HighlightedText originalText={stateData.originalText} highlights={highlights || []} />
+          </div>
+        </div>
+      )}
+
+      {highlights && highlights.length > 0 && !stateData?.originalText && (
         <div className="glass-panel" style={{ overflow: 'hidden', marginTop: '1.5rem' }}>
           <div style={{ padding: '1rem 1.5rem', borderBottom: `1px solid var(--border-color)` }}>
             <div style={{ fontSize: '1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -372,10 +388,19 @@ function Results() {
           </div>
           <div style={{ padding: '1.5rem' }}>
             {highlights.map((h, i) => (
-              <div key={i} style={{ padding: '1rem', borderRadius: '12px', background: 'var(--bg-glass)', border: '1px solid var(--border-color)', marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>📝 <strong>Your text:</strong> {h.input_sentence}</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>🔗 <strong>Matched:</strong> {h.matched_sentence}</div>
-                <span style={{ fontSize: '0.75rem', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', padding: '4px 10px', borderRadius: '12px', fontWeight: 700 }}>{h.score}% similar</span>
+              <div key={i} style={{ padding: '1rem', borderRadius: '12px', background: 'var(--bg-glass)', border: `1px solid ${h.score > 70 ? 'rgba(244,63,94,0.3)' : h.score > 40 ? 'rgba(251,191,36,0.3)' : 'var(--border-color)'}`, marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.875rem', marginBottom: '8px', lineHeight: '1.6' }}>
+                  📝 <strong>Your text:</strong>{' '}
+                  <span style={{ background: h.score > 70 ? 'rgba(244,63,94,0.15)' : 'rgba(251,191,36,0.15)', color: h.score > 70 ? '#f43f5e' : '#fbbf24', padding: '2px 6px', borderRadius: '4px' }}>
+                    {h.input_sentence}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.6' }}>
+                  🔗 <strong>Matched:</strong> {h.matched_sentence}
+                </div>
+                <span style={{ fontSize: '0.75rem', background: h.score > 70 ? 'rgba(244,63,94,0.15)' : 'rgba(251,191,36,0.15)', color: h.score > 70 ? '#f43f5e' : '#fbbf24', padding: '4px 10px', borderRadius: '12px', fontWeight: 700 }}>
+                  {h.score}% similar
+                </span>
               </div>
             ))}
           </div>
